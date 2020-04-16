@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Article;
+use ElasticsearchClient;
+
 
 class ReindexCommand extends Command
 {
@@ -11,14 +14,17 @@ class ReindexCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'command:name';
+    
+    protected $name = "search:reindex";
+    protected $description = "Indexes all articles to elasticsearch";
+    private $search;
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    
 
     /**
      * Create a new command instance.
@@ -28,6 +34,7 @@ class ReindexCommand extends Command
     public function __construct()
     {
         parent::__construct();
+        $this->search = $search;
     }
 
     /**
@@ -37,6 +44,22 @@ class ReindexCommand extends Command
      */
     public function handle()
     {
+        $this->info('Indexing all articles. Might take a while...');
+
+        foreach (Article::cursor() as $model)
+        {
+            $this->search->index([
+                'index' => $model->getSearchIndex(),
+                'type' => $model->getSearchType(),
+                'id' => $model->id,
+                'body' => $model->toSearchArray(),
+            ]);
+
+            // PHPUnit-style feedback
+            $this->output->write('.');
+        }
+
+        $this->info("nDone!");
         //
     }
 }
